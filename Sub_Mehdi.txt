@@ -1,0 +1,437 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns-remote",
+        "address": "udp://1.1.1.1",
+        "address_resolver": "dns-direct"
+      },
+      {
+        "tag": "dns-trick-direct",
+        "address": "https://sky.rethinkdns.com/",
+        "detour": "direct-fragment"
+      },
+      {
+        "tag": "dns-direct",
+        "address": "1.1.1.1",
+        "address_resolver": "dns-local",
+        "detour": "direct"
+      },
+      {
+        "tag": "dns-local",
+        "address": "local",
+        "detour": "direct"
+      },
+      {
+        "tag": "dns-block",
+        "address": "rcode://success"
+      }
+    ],
+    "rules": [
+      {
+        "domain": "www.visa.com.tw",
+        "server": "dns-direct"
+      },
+      {
+        "domain": "cp.cloudflare.com",
+        "server": "dns-remote",
+        "rewrite_ttl": 3000
+      }
+    ],
+    "final": "dns-remote",
+    "static_ips": {
+      "sky.rethinkdns.com": [
+        "104.17.148.22",
+        "104.17.147.22",
+        "188.114.99.0",
+        "188.114.98.0",
+        "2a06:98c1:3122::",
+        "2a06:98c1:3123::"
+      ]
+    },
+    "independent_cache": true
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "mtu": 9000,
+      "inet4_address": "172.19.0.1/28",
+      "auto_route": true,
+      "strict_route": true,
+      "endpoint_independent_nat": true,
+      "stack": "mixed",
+      "sniff": true
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "0.0.0.0",
+      "listen_port": 8002,
+      "sniff": true,
+      "sniff_override_destination": true
+    },
+    {
+      "type": "direct",
+      "tag": "dns-in",
+      "listen": "0.0.0.0",
+      "listen_port": 16450
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "select",
+      "outbounds": [
+        "auto",
+        "FR-Contabo_GmbH § 0",
+        "FR-Contabo_GmbH § 1",
+        "FR-Contabo_GmbH § 2",
+        "FR-Contabo_GmbH § 3"
+      ],
+      "default": "auto",
+      "interrupt_exist_connections": true
+    },
+    {
+      "type": "urltest",
+      "tag": "auto",
+      "outbounds": [
+        "FR-Contabo_GmbH § 0",
+        "FR-Contabo_GmbH § 1",
+        "FR-Contabo_GmbH § 2",
+        "FR-Contabo_GmbH § 3"
+      ],
+      "url": "http://cp.cloudflare.com",
+      "interval": "10m0s",
+      "tolerance": 1,
+      "idle_timeout": "30m0s",
+      "interrupt_exist_connections": true
+    },
+    {
+      "type": "vmess",
+      "tag": "FR-Contabo_GmbH § 0",
+      "server": "213.136.83.240",
+      "server_port": 43322,
+      "uuid": "bc97f674-c578-4940-9234-0a1da46041b9",
+      "security": "none",
+      "authenticated_length": true,
+      "packet_encoding": "xudp",
+      "transport": {
+        "type": "ws",
+        "path": "/vmess",
+        "max_early_data": 2048,
+        "early_data_header_name": "Sec-WebSocket-Protocol"
+      }
+    },
+    {
+      "type": "vmess",
+      "tag": "FR-Contabo_GmbH § 1",
+      "server": "www.visa.com.tw",
+      "server_port": 443,
+      "uuid": "bc97f674-c578-4940-9234-0a1da46041b9",
+      "security": "none",
+      "authenticated_length": true,
+      "tls": {
+        "enabled": true,
+        "server_name": "Cloudflare.com",
+        "alpn": "http/1.1",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        }
+      },
+      "packet_encoding": "xudp",
+      "transport": {
+        "type": "ws",
+        "path": "/vmess",
+        "headers": {
+          "Host": "Cloudflare.com"
+        },
+        "max_early_data": 2048,
+        "early_data_header_name": "Sec-WebSocket-Protocol"
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "FR-Contabo_GmbH § 2",
+      "server": "213.136.83.240",
+      "server_port": 30806,
+      "password": "bc97f674-c578-4940-9234-0a1da46041b9",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.bing.com",
+        "insecure": true
+      }
+    },
+    {
+      "type": "tuic",
+      "tag": "FR-Contabo_GmbH § 3",
+      "server": "213.136.83.240",
+      "server_port": 54368,
+      "uuid": "bc97f674-c578-4940-9234-0a1da46041b9",
+      "password": "admin123",
+      "congestion_control": "bbr",
+      "udp_relay_mode": "native",
+      "heartbeat": "10s",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.bing.com",
+        "insecure": true,
+        "alpn": [
+          "h3",
+          "spdy/3.1"
+        ]
+      }
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "direct",
+      "tag": "direct-fragment",
+      "tls_fragment": {
+        "enabled": true,
+        "size": "10-30",
+        "sleep": "2-8"
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "bypass"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "inbound": "tun-in",
+        "package_name": "app.hiddify.com",
+        "outbound": "bypass"
+      },
+      {
+        "inbound": "dns-in",
+        "outbound": "dns-out"
+      },
+      {
+        "port": 53,
+        "outbound": "dns-out"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "bypass"
+      }
+    ],
+    "final": "select",
+    "auto_detect_interface": true,
+    "override_android_vpn": true
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "clash.db"
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:16756",
+      "secret": "9RY0Q7mu7BVJdiNO"
+    }
+  }
+}
+
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns-remote",
+        "address": "udp://1.1.1.1",
+        "address_resolver": "dns-direct"
+      },
+      {
+        "tag": "dns-trick-direct",
+        "address": "https://sky.rethinkdns.com/",
+        "detour": "direct-fragment"
+      },
+      {
+        "tag": "dns-direct",
+        "address": "1.1.1.1",
+        "address_resolver": "dns-local",
+        "detour": "direct"
+      },
+      {
+        "tag": "dns-local",
+        "address": "local",
+        "detour": "direct"
+      },
+      {
+        "tag": "dns-block",
+        "address": "rcode://success"
+      }
+    ],
+    "rules": [
+      {
+        "domain": "cp.cloudflare.com",
+        "server": "dns-remote",
+        "rewrite_ttl": 3000
+      }
+    ],
+    "final": "dns-remote",
+    "static_ips": {
+      "sky.rethinkdns.com": [
+        "104.17.148.22",
+        "104.17.147.22",
+        "188.114.99.0",
+        "188.114.98.0",
+        "2a06:98c1:3122::",
+        "2a06:98c1:3123::"
+      ]
+    },
+    "independent_cache": true
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "mtu": 9000,
+      "inet4_address": "172.19.0.1/28",
+      "auto_route": true,
+      "strict_route": true,
+      "endpoint_independent_nat": true,
+      "stack": "mixed",
+      "sniff": true
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "0.0.0.0",
+      "listen_port": 8002,
+      "sniff": true,
+      "sniff_override_destination": true
+    },
+    {
+      "type": "direct",
+      "tag": "dns-in",
+      "listen": "0.0.0.0",
+      "listen_port": 16450
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "select",
+      "outbounds": [
+        "auto",
+        "Mehdi § 0",
+        "Zeynab § 1"
+      ],
+      "default": "auto",
+      "interrupt_exist_connections": true
+    },
+    {
+      "type": "urltest",
+      "tag": "auto",
+      "outbounds": [
+        "Mehdi § 0",
+        "Zeynab § 1"
+      ],
+      "url": "http://cp.cloudflare.com",
+      "interval": "10m0s",
+      "tolerance": 1,
+      "idle_timeout": "30m0s",
+      "interrupt_exist_connections": true
+    },
+    {
+      "type": "vmess",
+      "tag": "Mehdi § 0",
+      "server": "188.68.240.160",
+      "server_port": 59546,
+      "uuid": "7e3130c2-63b1-4c07-abeb-3f90dec9a3f6",
+      "security": "auto",
+      "authenticated_length": true,
+      "packet_encoding": "xudp"
+    },
+    {
+      "type": "vmess",
+      "tag": "Zeynab § 1",
+      "server": "188.68.240.160",
+      "server_port": 28464,
+      "uuid": "9d6c98bc-0d8d-478d-d037-62652602a3e7",
+      "security": "auto",
+      "authenticated_length": true,
+      "packet_encoding": "xudp"
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "direct",
+      "tag": "direct-fragment",
+      "tls_fragment": {
+        "enabled": true,
+        "size": "10-30",
+        "sleep": "2-8"
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "bypass"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "inbound": "tun-in",
+        "package_name": "app.hiddify.com",
+        "outbound": "bypass"
+      },
+      {
+        "inbound": "dns-in",
+        "outbound": "dns-out"
+      },
+      {
+        "port": 53,
+        "outbound": "dns-out"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "bypass"
+      }
+    ],
+    "final": "select",
+    "auto_detect_interface": true,
+    "override_android_vpn": true
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "clash.db"
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:16756",
+      "secret": "gPgMMikd8cnaYa7q"
+    }
+  }
+}
